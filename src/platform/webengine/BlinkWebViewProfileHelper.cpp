@@ -17,7 +17,8 @@
 
 #include "BlinkWebViewProfileHelper.h"
 #include "webos/webview_profile.h"
-#include <string.h>
+
+#include <cstring>
 
 void BlinkWebViewProfileHelper::clearBrowsingData(const int removeBrowsingDataMask,
         webos::WebViewProfile *profile)
@@ -63,4 +64,8 @@ int BlinkWebViewProfileHelper::maskForBrowsingDataType(const char* type) {
         return webos::WebViewProfile::REMOVE_WEBSQL;
 
     return 0;
+}
+
+void BlinkWebViewProfileHelper::setProxyRules(const std::string& proxy_rules) {
+    webos::WebViewProfile::GetDefaultProfile()->SetProxyRules(proxy_rules);
 }
