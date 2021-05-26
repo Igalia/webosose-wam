@@ -27,12 +27,13 @@
 #include "AglShell.h"
 #include "Url.h"
 
-WebAppBase* WebAppFactoryAGL::createWebApp(const std::string& winType, std::shared_ptr<ApplicationDescription> desc)
+WebAppBase* WebAppFactoryAGL::createWebApp(const std::string& winType, std::shared_ptr<ApplicationDescription> desc, struct agl_shell_surface *surface)
 {
-    WebAppBase* app = 0;
+    WebAppBase *app = nullptr;
 
     if(winType == WT_CARD || winType == WT_POPUP || winType == WT_MINIMAL || winType == WT_FLOATING) {
-        app = new WebAppWaylandAGL(winType, desc);
+        LOG_DEBUG("In WebAppFactoryAGL::createWebApp before calling new WebAppWaylandAGL()");
+        app = new WebAppWaylandAGL(winType, desc, surface);
     } else if(winType == WT_OVERLAY) {
         app = new WebAppWayland(winType, desc->surfaceId());
     } else if(winType == WT_SYSTEM_UI) {
@@ -46,9 +47,9 @@ WebAppBase* WebAppFactoryAGL::createWebApp(const std::string& winType, std::shar
     return app;
 }
 
-WebAppBase* WebAppFactoryAGL::createWebApp(const std::string& winType, WebPageBase* page, std::shared_ptr<ApplicationDescription> desc)
+WebAppBase* WebAppFactoryAGL::createWebApp(const std::string& winType, WebPageBase* page, std::shared_ptr<ApplicationDescription> desc, struct agl_shell_surface *surface)
 {
-    return createWebApp(winType, desc);
+    return createWebApp(winType, desc, surface);
 }
 
 WebPageBase* WebAppFactoryAGL::createWebPage(const Url& url, std::shared_ptr<ApplicationDescription> desc, const std::string& launchParams, struct agl_shell_surface *surface)

@@ -24,8 +24,8 @@
 
 class WebAppFactoryAGL : public WebAppFactoryInterface {
 public:
-    virtual WebAppBase* createWebApp(const std::string& winType, std::shared_ptr<ApplicationDescription> desc = 0);
-    virtual WebAppBase* createWebApp(const std::string& winType, WebPageBase* page, std::shared_ptr<ApplicationDescription> desc = 0);
+    virtual WebAppBase* createWebApp(const std::string& winType, std::shared_ptr<ApplicationDescription> desc = 0, struct agl_shell_surface *surface = nullptr);
+    virtual WebAppBase* createWebApp(const std::string& winType, WebPageBase* page, std::shared_ptr<ApplicationDescription> desc = 0, struct agl_shell_surface *surface = nullptr);
     virtual WebPageBase* createWebPage(const Url& url, std::shared_ptr<ApplicationDescription> desc, const std::string& launchParams = "", struct agl_shell_surface *surface = nullptr);
 };
 

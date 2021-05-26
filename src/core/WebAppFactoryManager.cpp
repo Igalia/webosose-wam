@@ -20,6 +20,7 @@
 #include "WebAppManagerConfig.h"
 #include "WebAppManager.h"
 #include "WebPageBase.h"
+#include "AglShell.h"
 
 WebAppFactoryManager* WebAppFactoryManager::m_instance = nullptr;
 
@@ -37,7 +38,7 @@ WebAppFactoryInterface* WebAppFactoryManager::getInterfaceInstance(const std::st
 }
 
 WebAppBase* WebAppFactoryManager::createWebApp(const std::string& winType, std::shared_ptr<ApplicationDescription> desc,
-                                               const std::string& appType)
+                                               const std::string& appType, struct agl_shell_surface *surface)
 {
     WebAppFactoryInterface* interface = getInterfaceInstance(appType);
     if (interface)
@@ -47,11 +48,12 @@ WebAppBase* WebAppFactoryManager::createWebApp(const std::string& winType, std::
 }
 
 WebAppBase* WebAppFactoryManager::createWebApp(const std::string& winType, WebPageBase* page,
-                                               std::shared_ptr<ApplicationDescription> desc, const std::string& appType)
+                                               std::shared_ptr<ApplicationDescription> desc,
+					       const std::string& appType, struct agl_shell_surface *surface)
 {
     WebAppFactoryInterface* interface = getInterfaceInstance(appType);
     if (interface)
-        return interface->createWebApp(winType, page, desc);
+        return interface->createWebApp(winType, page, desc, surface);
 
     return nullptr;
 }

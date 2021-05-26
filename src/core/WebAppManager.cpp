@@ -270,7 +270,9 @@ WebAppBase* WebAppManager::onLaunchUrl(const std::string& url, const std::string
                                        const std::string& args, const std::string& launchingAppId, std::list<struct agl_shell_surface> surfaces,
                                        int& errCode, std::string& errMsg)
 {
-    WebAppBase* app = WebAppFactoryManager::instance()->createWebApp(winType, appDesc, appDesc->subType());
+    struct agl_shell_surface s = surfaces.front();
+
+    WebAppBase* app = WebAppFactoryManager::instance()->createWebApp(winType, appDesc, appDesc->subType(), &s);
 
     if (!app) {
         errCode = ERR_CODE_LAUNCHAPP_UNSUPPORTED_TYPE;
@@ -278,7 +280,6 @@ WebAppBase* WebAppManager::onLaunchUrl(const std::string& url, const std::string
         return nullptr;
     }
 
-    struct agl_shell_surface s = surfaces.front();
     WebPageBase* page = WebAppFactoryManager::instance()->createWebPage(winType, Url(url), appDesc, appDesc->subType(), args, &s);
 
     //set use launching time optimization true while app loading.
