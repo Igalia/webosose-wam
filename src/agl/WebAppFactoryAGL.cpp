@@ -24,6 +24,7 @@
 #include "WebPageBlink.h"
 #include "WindowTypes.h"
 #include "LogManager.h"
+#include "AglShell.h"
 #include "Url.h"
 
 WebAppBase* WebAppFactoryAGL::createWebApp(const std::string& winType, std::shared_ptr<ApplicationDescription> desc)
@@ -50,8 +51,9 @@ WebAppBase* WebAppFactoryAGL::createWebApp(const std::string& winType, WebPageBa
     return createWebApp(winType, desc);
 }
 
-WebPageBase* WebAppFactoryAGL::createWebPage(const Url& url, std::shared_ptr<ApplicationDescription> desc, const std::string& launchParams)
+WebPageBase* WebAppFactoryAGL::createWebPage(const Url& url, std::shared_ptr<ApplicationDescription> desc, const std::string& launchParams, struct agl_shell_surface *surface)
 {
+    LOG_DEBUG("In WebAppFactoryAGL::createWebPage before calling new WebPageBlink()");
     return new WebPageBlink(url, desc, launchParams);
 }
 

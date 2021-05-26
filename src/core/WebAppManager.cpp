@@ -278,7 +278,8 @@ WebAppBase* WebAppManager::onLaunchUrl(const std::string& url, const std::string
         return nullptr;
     }
 
-    WebPageBase* page = WebAppFactoryManager::instance()->createWebPage(winType, Url(url), appDesc, appDesc->subType(), args);
+    struct agl_shell_surface s = surfaces.front();
+    WebPageBase* page = WebAppFactoryManager::instance()->createWebPage(winType, Url(url), appDesc, appDesc->subType(), args, &s);
 
     //set use launching time optimization true while app loading.
     page->setUseLaunchOptimization(true);
@@ -287,8 +288,7 @@ WebAppBase* WebAppManager::onLaunchUrl(const std::string& url, const std::string
       page->setEnableBackgroundRun(appDesc->isEnableBackgroundRun());
 
     app->setAppDescription(appDesc);
-    if (!app->isAglRoleType())
-	    app->setAglAppId(appDesc->id().c_str());
+    app->setAglAppId(appDesc->id().c_str());
 
     app->setAppProperties(args);
     app->setInstanceId(instanceId);
@@ -301,9 +301,8 @@ WebAppBase* WebAppManager::onLaunchUrl(const std::string& url, const std::string
     page->load();
     webPageAdded(page);
 
-    /* if the surface role is a background send ready to display them */
-    if (appDesc->surfaceRole() == 2) // TODO(rzanoni) change to the enum value
-	    app->sendAglReady();
+    // send ready when all the pages are loaded
+    //app->sendAglReady();
 
     m_appList.push_back(app);
 

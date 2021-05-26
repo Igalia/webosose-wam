@@ -24,6 +24,7 @@
 #endif
 
 #include "ApplicationDescription.h"
+#include "AglShell.h"
 
 class WebAppBase;
 class WebPageBase;
@@ -33,7 +34,7 @@ class WebAppFactoryInterface {
 public:
     virtual WebAppBase* createWebApp(const std::string& winType, std::shared_ptr<ApplicationDescription> desc = 0) = 0;
     virtual WebAppBase* createWebApp(const std::string& winType, WebPageBase* page, std::shared_ptr<ApplicationDescription> desc = 0) = 0;
-    virtual WebPageBase* createWebPage(const Url& url, std::shared_ptr<ApplicationDescription> desc, const std::string& launchParams = "") = 0;
+    virtual WebPageBase* createWebPage(const Url& url, std::shared_ptr<ApplicationDescription> desc, const std::string& launchParams = "", struct agl_shell_surface *surface = nullptr) = 0;
 };
 
 #if defined(HAS_LUNA_SERVICE)

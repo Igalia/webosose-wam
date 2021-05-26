@@ -57,13 +57,13 @@ WebAppBase* WebAppFactoryManager::createWebApp(const std::string& winType, WebPa
 }
 
 WebPageBase* WebAppFactoryManager::createWebPage(const std::string& winType, const Url& url, std::shared_ptr<ApplicationDescription> desc,
-                                                 const std::string& appType, const std::string& launchParams)
+                                                 const std::string& appType, const std::string& launchParams, struct agl_shell_surface *surface)
 {
     WebPageBase *page = nullptr;
 
     WebAppFactoryInterface* interface = getInterfaceInstance(appType);
     if (interface) {
-        page = interface->createWebPage(url, desc, launchParams);
+        page = interface->createWebPage(url, desc, launchParams, surface);
     } else {
         // use default factory if cannot find appType.
         auto it = m_interfaces.find(kDefaultAppType);

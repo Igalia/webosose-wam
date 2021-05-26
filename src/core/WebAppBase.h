@@ -21,6 +21,7 @@
 
 #include "WebAppManager.h"
 #include "WebPageObserver.h"
+#include "AglShell.h"
 
 namespace Json {
 class Value;
@@ -44,7 +45,7 @@ public:
     WebAppBase();
     ~WebAppBase() override;
 
-    virtual void init(int width, int height, int surface_id, int surface_role, int panel_type) = 0;
+    virtual void init(int width, int height, int surface_id, struct agl_shell_surface *surface) = 0;
     virtual void attach(WebPageBase*);
     virtual WebPageBase* detach();
     virtual void suspendAppRendering() = 0;
