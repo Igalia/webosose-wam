@@ -3,7 +3,8 @@
 
 #include <memory>
 
-#include "WebRuntimeAGL.h"
+//#include "WebRuntimeAGL.h"
+#include "AglShell.h"
 #include "WebAppManagerService.h"
 #include "Timer.h"
 

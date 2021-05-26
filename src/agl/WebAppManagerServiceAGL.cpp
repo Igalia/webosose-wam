@@ -527,6 +527,8 @@ void WebAppManagerServiceAGL::launchStartupAppFromConfig()
     xmlChar *author = nullptr;
     xmlChar *icon = nullptr;
 
+    std::list<struct agl_shell_surface> surfaces;
+
     id = xmlGetProp(root, (const xmlChar*)"id");
     version = xmlGetProp(root, (const xmlChar*)"version");
     for (xmlNode *node = root->children; node; node = node->next) {
@@ -578,7 +580,8 @@ void WebAppManagerServiceAGL::launchStartupAppFromConfig()
     std::string app_id = obj["id"].asString();
     int errCode = 0;
     std::string errMsg;
-    WebAppManagerService::onLaunch(appDesc, params, app_id, errCode, errMsg);
+
+    WebAppManagerService::onLaunch(appDesc, params, app_id, surfaces, errCode, errMsg);
 }
 
 void WebAppManagerServiceAGL::launchStartupAppFromURL()
@@ -610,7 +613,7 @@ void WebAppManagerServiceAGL::launchStartupAppFromURL()
 
     LOG_DEBUG("Launching with appDesc=[%s]", appDesc.c_str());
 
-    WebAppManagerService::onLaunch(appDesc, params, app_id, errCode, errMsg);
+    WebAppManagerService::onLaunch(appDesc, params, app_id, surfaces_, errCode, errMsg);
     LOG_DEBUG("onLaunch: Done.");
 }
 

@@ -10,8 +10,11 @@
 #include "WebRuntime.h"
 #include <libxml/parser.h>
 
+#include "AglShell.h"
+
 class LibHomeScreen;
 
+#if 0
 enum agl_shell_surface_type {
 	AGL_SHELL_TYPE_BACKGROUND,
 	AGL_SHELL_TYPE_PANEL,
@@ -46,6 +49,7 @@ struct agl_shell_surface {
 	struct agl_shell_panel panel;
 	std::string src;
 };
+#endif
 
 class Launcher {
 public:

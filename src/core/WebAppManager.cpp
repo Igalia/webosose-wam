@@ -267,7 +267,7 @@ std::list<const WebAppBase*> WebAppManager::runningApps(uint32_t pid)
 
 WebAppBase* WebAppManager::onLaunchUrl(const std::string& url, const std::string& winType,
                                        const std::shared_ptr<ApplicationDescription> appDesc, const std::string& instanceId,
-                                       const std::string& args, const std::string& launchingAppId,
+                                       const std::string& args, const std::string& launchingAppId, std::list<struct agl_shell_surface> surfaces,
                                        int& errCode, std::string& errMsg)
 {
     WebAppBase* app = WebAppFactoryManager::instance()->createWebApp(winType, appDesc, appDesc->subType());
@@ -636,7 +636,7 @@ void WebAppManager::killCustomPluginProcess(const std::string& basePath)
  * slightly faster for intra-sysmgr mainloop launches
  */
 std::string WebAppManager::launch(const std::string& appDescString, const std::string& params,
-        const std::string& launchingAppId, int& errCode, std::string& errMsg)
+        const std::string& launchingAppId, std::list<struct agl_shell_surface> surfaces, int& errCode, std::string& errMsg)
 {
     LOG_DEBUG("Begin");
     std::shared_ptr<ApplicationDescription> desc(ApplicationDescription::fromJsonString(appDescString.c_str()));
@@ -669,7 +669,7 @@ std::string WebAppManager::launch(const std::string& appDescString, const std::s
     } else {
        // Run as a normal app
         LOG_DEBUG("normal app url=[%s] instanceId=[%s]", url.c_str(), instanceId.c_str());
-        if (!onLaunchUrl(url, winType, desc, instanceId, params, launchingAppId, errCode, errMsg)) {
+        if (!onLaunchUrl(url, winType, desc, instanceId, params, launchingAppId, surfaces, errCode, errMsg)) {
             return std::string();
         }
     }

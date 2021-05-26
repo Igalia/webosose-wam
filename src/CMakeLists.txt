@@ -147,6 +147,7 @@ set(WAM_CORE_HEADERS
     util/Timer.h
     util/Url.h
     util/WebAppManagerUtils.h
+    util/AglShell.h
     ${AGL_SHELL_PROTO_INCL}
 )
 

@@ -18,6 +18,7 @@
 #define WEBAPPMANAGERSERVICE_H
 
 #include "WebAppManager.h"
+#include "AglShell.h"
 
 #include "webos/webview_base.h"
 
@@ -70,6 +71,7 @@ protected:
     std::string onLaunch(const std::string& appDescString,
         const std::string& params,
         const std::string& launchingAppId,
+	std::list<struct agl_shell_surface> surfaces,
         int& errCode,
         std::string& errMsg);
 
