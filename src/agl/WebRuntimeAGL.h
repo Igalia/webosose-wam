@@ -7,49 +7,13 @@
 #include <string>
 #include <unordered_map>
 
+#include "Timer.h"
 #include "WebRuntime.h"
 #include <libxml/parser.h>
 
 #include "AglShell.h"
 
 class LibHomeScreen;
-
-#if 0
-enum agl_shell_surface_type {
-	AGL_SHELL_TYPE_BACKGROUND,
-	AGL_SHELL_TYPE_PANEL,
-};
-
-enum agl_shell_desktop_surface_type {
-	AGL_SHELL_TYPE_DESKTOP,
-	AGL_SHELL_TYPE_POPUP,
-	AGL_SHELL_TYPE_FULLSCREEN,
-	AGL_SHELL_TYPE_SPLIT_V,
-	AGL_SHELL_TYPE_SPLIT_H,
-	AGL_SHELL_TYPE_REMOTE
-};
-
-enum agl_shell_panel_edge {
-	AGL_SHELL_PANEL_TOP,
-	AGL_SHELL_PANEL_BOTTOM,
-	AGL_SHELL_PANEL_LEFT,
-	AGL_SHELL_PANEL_RIGHT,
-};
-
-struct agl_shell_panel {
-	void to_edge(const char *edge);
-	void init(const char *edge, const char *width);
-
-	enum agl_shell_panel_edge edge;
-	int width;
-};
-
-struct agl_shell_surface {
-	enum agl_shell_surface_type surface_type;
-	struct agl_shell_panel panel;
-	std::string src;
-};
-#endif
 
 class Launcher {
 public:
@@ -69,6 +33,9 @@ class SharedBrowserProcessWebAppLauncher : public Launcher {
 public:
   int launch(const std::string& id, const std::string& uri, std::list<struct agl_shell_surface> surfaces, const std::string& width, const std::string& height) override;
   int loop(int argc, const char** argv, volatile sig_atomic_t& e_flag) override;
+  void send_ready();
+  OneShotTimer<SharedBrowserProcessWebAppLauncher> ready_timer_;
+  std::string ready_timer_id_;
 };
 
 class SingleBrowserProcessWebAppLauncher : public Launcher {
@@ -103,6 +70,7 @@ private:
 						   surfaces, if the surfaces
 						   list is empty we're just a
 						   simple runtime */
+
 
   int m_port;
   std::string m_token;

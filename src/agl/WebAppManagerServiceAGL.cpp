@@ -313,6 +313,11 @@ public:
 
       bytes = recv(socket_fd_, (void *) buf, sizeof(buf), 0);
 
+      if (bytes <= 0) {
+	      LOG_DEBUG("Got empty read!");
+	      return 0;
+      }
+
       int last = bytes - 1;
       // Remove the new line if there's one
       if (buf[last] == '\n') {
@@ -324,8 +329,6 @@ public:
       LOG_DEBUG("Got %zd bytes=[%s]", bytes, buf);
 
       std::list<std::string> event_args;
-
-      std::list<struct agl_shell_surface> surfaces;
 
       char *tokenize = strdup(str);
       char *token = strtok(tokenize, " ");
@@ -345,19 +348,21 @@ public:
 
       str++;
       std::string last_arg = std::string(str);
-      ::CSurfaces surfaces_;
-
-      bool parsed = surfaces_.ParseFromString(last_arg);
-      if (parsed) {
-	      LOG_DEBUG("Serialized. Transfering to surfaces");
-	      csurfaces_to_surfaces(surfaces_, &surfaces);
-	      print_surfaces(surfaces);
-      }
 
       std::string event = event_args.front();
       event_args.pop_front();
-
       if (event == kStartApp) {
+
+	std::list<struct agl_shell_surface> surfaces;
+      	::CSurfaces surfaces_;
+
+      	bool parsed = surfaces_.ParseFromString(last_arg);
+      	if (parsed) {
+      	        LOG_DEBUG("Serialized. Transfering to surfaces");
+      	        csurfaces_to_surfaces(surfaces_, &surfaces);
+      	        print_surfaces(surfaces);
+      	}
+
         std::string arg1 = event_args.front();
 	event_args.pop_front();
         std::string arg2 = event_args.front();
@@ -374,11 +379,6 @@ public:
 			event.c_str(), arg1.c_str(), arg2.c_str());
 	LOG_DEBUG("kStartApp, arg3 %d, arg4 %d, arg5 %d",
 			arg3, arg4, arg5);
-
-	if (!surfaces.empty()) {
-		LOG_DEBUG("Surfaces are not empty. Printing them");
-		print_surfaces(surfaces);
-	}
 
         WebAppManagerServiceAGL::instance()->setStartupApplication(
           arg1, arg2, arg3, arg4, arg5, surfaces);
@@ -507,6 +507,9 @@ void WebAppManagerServiceAGL::triggetEventForApp(const std::string& action) {
   } else if (action == kKilledApp) {
     startup_app_timer_.start(1000, this,
           &WebAppManagerServiceAGL::onKillEvent);
+  } else if (action == kSendAglReady) {
+     ready_app_timer_.start(1000, this,
+           &WebAppManagerServiceAGL::onSendAglEvent);
   }
 }
 
@@ -587,6 +590,7 @@ void WebAppManagerServiceAGL::launchStartupAppFromConfig()
 void WebAppManagerServiceAGL::launchStartupAppFromURL()
 {
     LOG_DEBUG("WebAppManagerServiceAGL::launchStartupAppFromURL");
+
     LOG_DEBUG("    url: %s", startup_app_uri_.c_str());
     Json::Value obj(Json::objectValue);
     obj["id"] = startup_app_id_;
@@ -682,6 +686,22 @@ void WebAppManagerServiceAGL::onActivateEvent() {
 	  LOG_DEBUG("Not found app=%s running", app_id_event_target_.c_str());
   }
   app_id_event_target_.clear();
+}
+
+void
+WebAppManagerServiceAGL::onSendAglEvent()
+{
+	LOG_DEBUG("onSendAglEvent for app_id_event_target_ %s", app_id_event_target_.c_str());
+	if (app_id_event_target_.empty())
+		return;
+
+	WebAppBase* web_app = WebAppManager::instance()->findAppById(app_id_event_target_);
+	if (web_app) {
+		LOG_DEBUG("got webapp for app_id_event_target_ %s, sending ready", app_id_event_target_.c_str());
+		web_app->sendAglReady();
+	}
+
+	app_id_event_target_.clear();
 }
 
 void WebAppManagerServiceAGL::onDeactivateEvent() {

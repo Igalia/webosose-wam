@@ -42,7 +42,7 @@ WebAppBase* WebAppFactoryManager::createWebApp(const std::string& winType, std::
 {
     WebAppFactoryInterface* interface = getInterfaceInstance(appType);
     if (interface)
-        return interface->createWebApp(winType, desc);
+        return interface->createWebApp(winType, desc, surface);
 
     return nullptr;
 }

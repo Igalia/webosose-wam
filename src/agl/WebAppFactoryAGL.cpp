@@ -32,7 +32,7 @@ WebAppBase* WebAppFactoryAGL::createWebApp(const std::string& winType, std::shar
     WebAppBase *app = nullptr;
 
     if(winType == WT_CARD || winType == WT_POPUP || winType == WT_MINIMAL || winType == WT_FLOATING) {
-        LOG_DEBUG("In WebAppFactoryAGL::createWebApp before calling new WebAppWaylandAGL()");
+        LOG_DEBUG("In WebAppFactoryAGL::createWebApp before calling new WebAppWaylandAGL() surface %p", surface);
         app = new WebAppWaylandAGL(winType, desc, surface);
     } else if(winType == WT_OVERLAY) {
         app = new WebAppWayland(winType, desc->surfaceId());

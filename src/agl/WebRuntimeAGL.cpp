@@ -175,6 +175,26 @@ int SingleBrowserProcessWebAppLauncher::loop(int argc, const char** argv, volati
   return webOSMain.Run(argc, argv);
 }
 
+
+void
+SharedBrowserProcessWebAppLauncher::send_ready(void)
+{
+	LOG_DEBUG("In SharedBrowserProcessWebAppLauncher::send_ready()");
+
+	if (ready_timer_id_.empty()) {
+		LOG_DEBUG("Set the ready_timer_id_!");
+		return;
+	}
+
+	std::vector<const char*> ndata;
+
+	ndata.push_back(kSendAglReady);
+	ndata.push_back(ready_timer_id_.c_str());
+
+	LOG_DEBUG("SharedBrowserProcessWebAppLauncher::send_ready() before doing sendEvent with verb %s", kSendAglReady);
+	WebAppManagerServiceAGL::instance()->sendEvent(ndata.size(), ndata.data());
+}
+
 int
 SharedBrowserProcessWebAppLauncher::launch(const std::string& id,
 					   const std::string& uri,
@@ -199,7 +219,14 @@ SharedBrowserProcessWebAppLauncher::launch(const std::string& id,
 	data.push_back(width.c_str());
 	data.push_back(height.c_str());
 
+	LOG_DEBUG("SharedBrowserProcessWebAppLauncher::launch() before doing launchOnHost");
 	WebAppManagerServiceAGL::instance()->launchOnHost(data.size(), data.data(), surfaces);
+
+	if (!surfaces.empty()) {
+		ready_timer_id_ = id;
+		send_ready();
+	}
+
 	return m_rid;
 }
 

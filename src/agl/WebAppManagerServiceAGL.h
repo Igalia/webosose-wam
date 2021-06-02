@@ -12,6 +12,7 @@ constexpr char kStartApp[] = "start-app";
 constexpr char kKilledApp[] = "killed-app";
 constexpr char kActivateEvent[] = "activate-event";
 constexpr char kDeactivateEvent[] = "deactivate-event";
+constexpr char kSendAglReady[] = "ready-event";
 
 class WamSocket;
 class WamSocketLockFile;
@@ -58,6 +59,7 @@ private:
     void launchStartupAppFromURL();
 
     void onActivateEvent();
+    void onSendAglEvent();
     void onDeactivateEvent();
     void onKillEvent();
 
@@ -72,6 +74,7 @@ private:
 
     int startup_app_surface_id_;
     OneShotTimer<WebAppManagerServiceAGL> startup_app_timer_;
+    OneShotTimer<WebAppManagerServiceAGL> ready_app_timer_;
 
     std::unique_ptr<WamSocket> socket_;
     std::unique_ptr<WamSocketLockFile> lock_file_;

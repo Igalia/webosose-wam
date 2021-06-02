@@ -162,10 +162,12 @@ public:
 protected:
 private:
     void loadEnvironmentVariable();
+    typedef std::list<WebAppBase*> AppList;
+    typedef std::list<WebPageBase*> PageList;
 
-    WebAppBase* onLaunchUrl(const std::string& url, const std::string& winType,
+    WebAppBase *onLaunchUrl(const std::string& url, const std::string& winType,
         const std::shared_ptr<ApplicationDescription> appDesc, const std::string& instanceId,
-        const std::string& args, const std::string& launchingAppId, std::list<struct agl_shell_surface> surfaces,
+        const std::string& args, const std::string& launchingAppId, struct agl_shell_surface *surface,
         int& errCode, std::string& errMsg);
 
     void onRelaunchApp(const std::string& instanceId, const std::string& appId,
@@ -173,8 +175,6 @@ private:
 
     WebAppManager();
 
-    typedef std::list<WebAppBase*> AppList;
-    typedef std::list<WebPageBase*> PageList;
 
     bool isRunningApp(const std::string& id);
     std::unordered_map<std::string, WebAppBase*> m_closingAppList;

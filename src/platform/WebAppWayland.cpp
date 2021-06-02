@@ -54,7 +54,7 @@ WebAppWayland::WebAppWayland(const std::string& type,
     , m_locationHint(location_hint)
     , surface_(surface)
 {
-    init(width, height, surface_id, surface);
+    init(width, height, surface_id);
 }
 
 WebAppWayland::WebAppWayland(const std::string& type, WebAppWaylandWindow* window,
@@ -74,7 +74,7 @@ WebAppWayland::WebAppWayland(const std::string& type, WebAppWaylandWindow* windo
     , m_locationHint(location_hint)
     , surface_(surface)
 {
-    init(width, height, 0, surface);
+    init(width, height, 0);
 }
 
 WebAppWayland::~WebAppWayland()
@@ -110,22 +110,12 @@ WebAppWayland::isAglRoleType(void)
 		(m_surface_role == AGL_SHELL_TYPE_PANEL);
 }
 
-void WebAppWayland::init(int width, int height, int surface_id, struct agl_shell_surface *surface)
+void WebAppWayland::init(int width, int height, int surface_id)
 {
     if (!m_appWindow)
         m_appWindow = WebAppWaylandWindow::take(surface_id);
-    m_appWindow->SetWindowSurfaceId(surface_id);
 
-    if (surface) {
-	    switch (surface->surface_type) {
-		case AGL_SHELL_TYPE_BACKGROUND:
-			m_appWindow->SetAglBackground();
-		break;
-		case AGL_SHELL_TYPE_PANEL:
-			m_appWindow->SetAglPanel(surface->panel.edge);
-		break;
-	    }
-    }
+    m_appWindow->SetWindowSurfaceId(surface_id);
 
     if (width == 0)
 	    width = m_appWindow->DisplayWidth();
@@ -143,6 +133,22 @@ void WebAppWayland::init(int width, int height, int surface_id, struct agl_shell
     }
 
     m_appWindow->setWebApp(this);
+
+    LOG_DEBUG("surface_ %p\n", surface_);
+    if (surface_) {
+	    switch (surface_->surface_type) {
+		case AGL_SHELL_TYPE_BACKGROUND:
+			LOG_DEBUG("Setting surface %p to background\n", surface_);
+			m_appWindow->SetAglBackground();
+		break;
+		case AGL_SHELL_TYPE_PANEL:
+			LOG_DEBUG("Setting surface %p to panel\n", surface_);
+			m_appWindow->SetAglPanel(surface_->panel.edge);
+		break;
+		default:
+			assert(!"Invalid type!\n");
+	    }
+    }
 
     // set compositor window type
     setWindowProperty("_WEBOS_WINDOW_TYPE", m_windowType);
@@ -553,6 +559,8 @@ void WebAppWayland::raise()
 
     if (wasMinimizedState)
         page()->setVisibilityState(WebPageBase::WebPageVisibilityState::WebPageVisibilityStateVisible);
+
+
 }
 
 void WebAppWayland::goBackground()

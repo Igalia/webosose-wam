@@ -70,7 +70,7 @@ public:
     bool isAglRoleType();
 
     // WebAppBase
-    void init(int width, int height, int surface_id, struct agl_shell_surface *surface) override;
+    void init(int width, int height, int surface_id) override;
     void attach(WebPageBase*) override;
     WebPageBase* detach() override;
     void suspendAppRendering() override;
