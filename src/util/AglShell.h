@@ -58,6 +58,7 @@ struct agl_shell_surface {
 	enum agl_shell_surface_type surface_type;
 	struct agl_shell_panel panel;
 	std::string src;
+	std::string entryPoint;
 };
 
 

@@ -298,9 +298,6 @@ int WebAppLauncherRuntime::run(int argc, const char** argv) {
   if (!init())
     return -1;
 
-  //std::string surface_role_str = std::to_string(m_surface_type);
-  //std::string panel_type_str = std::to_string(m_panel_type);
-
   /* Launch WAM application */
   m_launcher->m_rid = m_launcher->launch(m_id, m_url, surfaces, m_width, m_height);
 
@@ -323,89 +320,92 @@ void WebAppLauncherRuntime::setup_signals() {
   signal(SIGTERM, sig_term_handler);
 }
 
-bool WebAppLauncherRuntime::init() {
-  // based on https://tools.ietf.org/html/rfc3986#page-50
-  std::regex url_regex (
-    R"(^(([^:\/?#]+):)?(//([^\/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?)",
-    std::regex::extended
-  );
+bool 
+WebAppLauncherRuntime::init() {
+	// based on https://tools.ietf.org/html/rfc3986#page-50
+	std::regex url_regex (
+			R"(^(([^:\/?#]+):)?(//([^\/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?)",
+			std::regex::extended
+			);
 
-  std::smatch url_match_result;
-  if (std::regex_match(m_url, url_match_result, url_regex)) {
-    unsigned counter = 0;
-    for (const auto& res : url_match_result) {
-      LOG_DEBUG("    %d: %s", counter++, res.str().c_str());
-    }
+	std::smatch url_match_result;
 
-    if (url_match_result[4].length()) {
-      std::string authority = url_match_result[4].str();
-      std::size_t n = authority.find(':');
-      if (n != std::string::npos) {
-        std::string sport = authority.substr(n+1);
-        m_host = authority.substr(0, n);
-        m_port = stringTo<int>(sport);
-      } else {
-        m_host = authority;
-      }
-    }
+	if (std::regex_match(m_url, url_match_result, url_regex)) {
+		unsigned counter = 0;
+		for (const auto& res : url_match_result) {
+			LOG_DEBUG("    %d: %s", counter++, res.str().c_str());
+		}
 
-    bool url_misses_token = true;
-    if (url_match_result[7].length()) {
-      std::string query = url_match_result[7].str();
-      std::size_t n = query.find('=');
-      if (n != std::string::npos) {
-        m_token = query.substr(n+1);
-        url_misses_token = false;
-      }
-    }
-    if (url_misses_token) {
-      char *tokenv = getenv("CYNAGOAUTH_TOKEN");
-      if (tokenv) {
-        m_token = tokenv;
-        m_url.push_back(url_match_result[7].length() ? '&' : '?');
-        m_url.append("token=");
-        m_url.append(m_token);
-      }
-    }
+		if (url_match_result[4].length()) {
+			std::string authority = url_match_result[4].str();
+			std::size_t n = authority.find(':');
+			if (n != std::string::npos) {
+				std::string sport = authority.substr(n+1);
+				m_host = authority.substr(0, n);
+				m_port = stringTo<int>(sport);
+			} else {
+				m_host = authority;
+			}
+		}
 
-    std::string path = std::string(getenv("AFM_APP_INSTALL_DIR"));
-    if (path.empty()) {
-	    LOG_DEBUG("Please set AFM_APP_INSTALL_DIR");
-	    return false;
-    }
-    path = path + "/" + WEBAPP_CONFIG;
+		bool url_misses_token = true;
+		if (url_match_result[7].length()) {
+			std::string query = url_match_result[7].str();
+			std::size_t n = query.find('=');
+			if (n != std::string::npos) {
+				m_token = query.substr(n+1);
+				url_misses_token = false;
+			}
+		}
 
-    // Parse config file of runxdg
-    if (parse_config(path.c_str())) {
-      LOG_DEBUG("Error in config");
-      return false;
-    }
+		if (url_misses_token) {
+			char *tokenv = getenv("CYNAGOAUTH_TOKEN");
+			if (tokenv) {
+				m_token = tokenv;
+				m_url.push_back(url_match_result[7].length() ? '&' : '?');
+				m_url.append("token=");
+				m_url.append(m_token);
+			}
+		}
 
-    // Special cases for windowmanager roles
-    if (m_id.rfind("webapps-html5-homescreen", 0) == 0)
-      m_role = "homescreen";
-    else if (m_id.rfind("webapps-homescreen", 0) == 0)
-      m_role = "homescreen";
-    else {
-      m_role = m_id.substr(0,12);
-    }
+		std::string path = std::string(getenv("AFM_APP_INSTALL_DIR"));
+		if (path.empty()) {
+			LOG_DEBUG("Please set AFM_APP_INSTALL_DIR");
+			return false;
+		}
+		path = path + "/" + WEBAPP_CONFIG;
 
-    LOG_DEBUG("id=[%s], name=[%s], role=[%s], url=[%s], host=[%s], port=%d, token=[%s], width=[%s], height[%s]",
-	    m_id.c_str(), m_name.c_str(), m_role.c_str(), m_url.c_str(),
-	    m_host.c_str(), m_port, m_token.c_str(), m_width.c_str(),
-	    m_height.c_str());
+		// Parse config file of runxdg
+		if (parse_config(path.c_str())) {
+			LOG_DEBUG("Error in config");
+			return false;
+		}
 
-    // Setup HomeScreen API
-    if (!init_hs()) {
-      LOG_DEBUG("cannot setup hs API");
-      return false;
-    }
+		// Special cases for windowmanager roles
+		if (m_id.rfind("webapps-html5-homescreen", 0) == 0)
+			m_role = "homescreen";
+		else if (m_id.rfind("webapps-homescreen", 0) == 0)
+			m_role = "homescreen";
+		else {
+			m_role = m_id.substr(0,12);
+		}
 
-    return true;
-  } else {
-    LOG_DEBUG("Malformed url.");
-    return false;
-  }
+		LOG_DEBUG("id=[%s], name=[%s], role=[%s], url=[%s], host=[%s], port=%d, token=[%s], width=[%s], height[%s]",
+				m_id.c_str(), m_name.c_str(), m_role.c_str(), m_url.c_str(),
+				m_host.c_str(), m_port, m_token.c_str(), m_width.c_str(),
+				m_height.c_str());
+
+		// Setup HomeScreen API
+		if (!init_hs()) {
+			LOG_DEBUG("cannot setup hs API");
+			return false;
+		}
+
+		return true;
+	} else {
+		LOG_DEBUG("Malformed url.");
+		return false;
+	}
 }
 
 bool WebAppLauncherRuntime::init_hs() {
@@ -422,6 +422,38 @@ bool WebAppLauncherRuntime::init_hs() {
   m_hs->set_event_handler(LibHomeScreen::Event_ShowWindow, handler);
 
   return true;
+}
+
+static std::string
+surface_compose_entry_point(std::string src, std::string host, int port, std::string token)
+{
+	std::string entryPoint = std::string("http://");
+
+	entryPoint.append(host);
+	entryPoint.append(":");
+	entryPoint.append(std::to_string(port));
+
+	auto found = src.find("/");
+
+	if (found == std::string::npos) {
+		entryPoint.append("/");
+		entryPoint.append(src);
+		entryPoint.append("/");
+	} else {
+		if (found > 0) {
+			entryPoint.append("/");
+			entryPoint.append(src);
+		} else {
+			entryPoint.append("/");
+		}
+	}
+
+
+	entryPoint.append("index.html");
+	entryPoint.append("?token=");
+	entryPoint.append(token);
+
+	return entryPoint;
 }
 
 void
@@ -455,6 +487,10 @@ WebAppLauncherRuntime::parse_config_client_shell(xmlNode *root_node)
 
                                 surface.panel = panel;
                                 surface.src = std::string((char *) source);
+
+				surface.entryPoint =
+					surface_compose_entry_point(surface.src, m_host, m_port, m_token);
+
                                 surface.surface_type = AGL_SHELL_TYPE_PANEL;
                                 surfaces.push_back(surface);
 
@@ -469,6 +505,8 @@ WebAppLauncherRuntime::parse_config_client_shell(xmlNode *root_node)
                                 assert(source);
                                 surface.surface_type = AGL_SHELL_TYPE_BACKGROUND;
                                 surface.src = std::string((char *) source);
+				surface.entryPoint =
+					surface_compose_entry_point(surface.src, m_host, m_port, m_token);
                                 surfaces.push_back(surface);
                                 bg_found = true;
                         }

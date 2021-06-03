@@ -185,6 +185,7 @@ surfaces_to_csurfaces(::CSurfaces *surfaces_, std::list<struct agl_shell_surface
 		case AGL_SHELL_TYPE_BACKGROUND:
 			sh_surf->set_surface_type(::surface_type::TYPE_BACKGROUND);
 			sh_surf->set_src(s.src);
+			sh_surf->set_entrypoint(s.entryPoint);
 			LOG_DEBUG("Added background surface to CSurfaces");
 			break;
 		case AGL_SHELL_TYPE_PANEL:
@@ -195,6 +196,7 @@ surfaces_to_csurfaces(::CSurfaces *surfaces_, std::list<struct agl_shell_surface
 			sh_panel->set_edge(to_panel_edge(s.panel.edge));
 
 			sh_surf->set_src(s.src);
+			sh_surf->set_entrypoint(s.entryPoint);
 			LOG_DEBUG("Added panel surface to CSurfaces");
 			break;
 		}
@@ -212,6 +214,7 @@ csurfaces_to_surfaces(::CSurfaces surfaces_, std::list<struct agl_shell_surface>
 		case ::surface_type::TYPE_BACKGROUND:
 			shsurf.surface_type = AGL_SHELL_TYPE_BACKGROUND;
 			shsurf.src = s.src();
+			shsurf.entryPoint = s.entrypoint();
 			LOG_DEBUG("Added csurface background");
 			break;
 		case ::surface_type::TYPE_PANEL:
@@ -219,6 +222,7 @@ csurfaces_to_surfaces(::CSurfaces surfaces_, std::list<struct agl_shell_surface>
 			shsurf.panel.width = s.panel().width();
 			shsurf.panel.edge = from_panel_edge(s.panel().edge());
 			shsurf.src = s.src();
+			shsurf.entryPoint = s.entrypoint();
 			LOG_DEBUG("Added csurface panel");
 			break;
 		default:

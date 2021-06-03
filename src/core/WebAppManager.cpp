@@ -671,9 +671,12 @@ std::string WebAppManager::launch(const std::string& appDescString, const std::s
        // Run as a normal app
 	for (struct agl_shell_surface s: surfaces) {
 		std::string url = s.src;
+		std::string fakeUrl = s.entryPoint;
 		LOG_DEBUG("normal app url=[%s] instanceId=[%s]", url.c_str(), instanceId.c_str());
 		LOG_DEBUG("url, entryPoint() %s, type %d, surface %p", url.c_str(), s.surface_type, &s);
-		if (!onLaunchUrl(url, winType, desc, instanceId, params, launchingAppId, &s, errCode, errMsg)) {
+		LOG_DEBUG("Real entryPoint %s", desc->entryPoint().c_str());
+		LOG_DEBUG("Fake entryPoint %s", fakeUrl.c_str());
+		if (!onLaunchUrl(fakeUrl, winType, desc, instanceId, params, launchingAppId, &s, errCode, errMsg)) {
 			LOG_DEBUG("Failed to load webapp!");
 			return std::string();
 		}
