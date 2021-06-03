@@ -669,16 +669,27 @@ std::string WebAppManager::launch(const std::string& appDescString, const std::s
         onRelaunchApp(instanceId, desc->id().c_str(), params.c_str(), launchingAppId.c_str());
     } else {
        // Run as a normal app
-	for (struct agl_shell_surface s: surfaces) {
-		std::string url = s.src;
-		std::string fakeUrl = s.entryPoint;
-		LOG_DEBUG("normal app url=[%s] instanceId=[%s]", url.c_str(), instanceId.c_str());
-		LOG_DEBUG("url, entryPoint() %s, type %d, surface %p", url.c_str(), s.surface_type, &s);
-		LOG_DEBUG("Real entryPoint %s", desc->entryPoint().c_str());
-		LOG_DEBUG("Fake entryPoint %s", fakeUrl.c_str());
-		if (!onLaunchUrl(fakeUrl, winType, desc, instanceId, params, launchingAppId, &s, errCode, errMsg)) {
+       	if (surfaces.empty()) {
+		LOG_DEBUG("Got a regular app to start. Not passing any surface");
+		if (!onLaunchUrl(std::string(desc->entryPoint()), winType,
+				 desc, instanceId, params, launchingAppId,
+				 nullptr, errCode, errMsg)) {
 			LOG_DEBUG("Failed to load webapp!");
 			return std::string();
+		}
+	} else {
+		LOG_DEBUG("Got client-shell surfaces.");
+		for (struct agl_shell_surface s: surfaces) {
+			std::string url = s.src;
+			std::string fakeUrl = s.entryPoint;
+			LOG_DEBUG("normal app url=[%s] instanceId=[%s]", url.c_str(), instanceId.c_str());
+			LOG_DEBUG("url, entryPoint() %s, type %d, surface %p", url.c_str(), s.surface_type, &s);
+			LOG_DEBUG("Real entryPoint %s", desc->entryPoint().c_str());
+			LOG_DEBUG("Fake entryPoint %s", fakeUrl.c_str());
+			if (!onLaunchUrl(fakeUrl, winType, desc, instanceId, params, launchingAppId, &s, errCode, errMsg)) {
+				LOG_DEBUG("Failed to load webapp!");
+				return std::string();
+			}
 		}
 	}
     }

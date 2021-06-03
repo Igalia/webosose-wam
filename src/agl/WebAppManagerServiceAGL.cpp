@@ -364,7 +364,11 @@ public:
       	if (parsed) {
       	        LOG_DEBUG("Serialized. Transfering to surfaces");
       	        csurfaces_to_surfaces(surfaces_, &surfaces);
-      	        print_surfaces(surfaces);
+		if (!surfaces.empty()) {
+			print_surfaces(surfaces);
+		} else {
+			LOG_DEBUG("Surfaces are empty. Probably no surfaces have seen sent!");
+		}
       	}
 
         std::string arg1 = event_args.front();
