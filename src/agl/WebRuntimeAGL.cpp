@@ -165,6 +165,7 @@ SingleBrowserProcessWebAppLauncher::launch(const std::string& id,
 {
 	m_rid = (int) getpid();
 
+	LOG_DEBUG("SingleBrowserProcessWebAppLauncher::launch with id %s, uri %s\n", id.c_str(), uri.c_str());
 	WebAppManagerServiceAGL::instance()->setStartupApplication(id, uri, m_rid, 0, 0, surfaces);
 	return m_rid;
 }

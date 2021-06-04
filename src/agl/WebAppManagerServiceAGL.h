@@ -17,6 +17,31 @@ constexpr char kSendAglReady[] = "ready-event";
 class WamSocket;
 class WamSocketLockFile;
 
+struct startup_args {
+	startup_args(std::string _app_id, std::string _app_uri,
+			int _surface_id, int _width, int _height,
+			std::list<struct agl_shell_surface> _surfaces)
+	{
+		width = _width;
+		height = _height;
+
+		surfaces = _surfaces;
+		app_id = _app_id;
+		app_uri = _app_uri;
+
+		surface_id = _surface_id;
+	}
+
+	int width;
+	int height;
+	int surface_id;
+
+	std::string app_id;
+	std::string app_uri;
+	std::list<struct agl_shell_surface> surfaces;
+};
+
+
 class WebAppManagerServiceAGL : public WebAppManagerService {
 public:
     static WebAppManagerServiceAGL* instance();
@@ -48,15 +73,15 @@ public:
     Json::Value clearBrowsingData(const Json::Value &request) override;
     Json::Value webProcessCreated(const Json::Value &request, bool subscribed) override;
 
-    void triggerStartupApp();
+    void triggerStartupApp(struct startup_args *sargs);
     void triggetEventForApp(const std::string& action);
 
 private:
 
     WebAppManagerServiceAGL();
 
-    void launchStartupAppFromConfig();
-    void launchStartupAppFromURL();
+    void launchStartupAppFromConfig(void *data);
+    void launchStartupAppFromURL(void *data);
 
     void onActivateEvent();
     void onSendAglEvent();
@@ -73,7 +98,7 @@ private:
     int height;
 
     int startup_app_surface_id_;
-    OneShotTimer<WebAppManagerServiceAGL> startup_app_timer_;
+    OneShotTimer<WebAppManagerServiceAGL> event_app_timer_;
     OneShotTimer<WebAppManagerServiceAGL> ready_app_timer_;
 
     std::unique_ptr<WamSocket> socket_;
