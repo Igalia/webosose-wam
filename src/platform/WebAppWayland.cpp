@@ -124,6 +124,23 @@ void WebAppWayland::init(int width, int height, int surface_id)
 
     LOG_DEBUG("Width %d, Height %d", width, height);
 
+    if (surface_) {
+	    LOG_DEBUG("surface_ %p\n", surface_);
+	    switch (surface_->surface_type) {
+		case AGL_SHELL_TYPE_BACKGROUND:
+			LOG_DEBUG("Setting surface %p to background\n", surface_);
+			m_appWindow->SetAglBackground();
+		break;
+		case AGL_SHELL_TYPE_PANEL:
+			LOG_DEBUG("Setting surface %p to panel\n", surface_);
+			m_appWindow->SetAglPanel(surface_->panel.edge);
+			width = surface_->panel.width;
+		break;
+		default:
+			assert(!"Invalid type!\n");
+	    }
+    }
+
     setUiSize(width, height);
     m_appWindow->InitWindow(width, height);
 
@@ -133,22 +150,6 @@ void WebAppWayland::init(int width, int height, int surface_id)
     }
 
     m_appWindow->setWebApp(this);
-
-    LOG_DEBUG("surface_ %p\n", surface_);
-    if (surface_) {
-	    switch (surface_->surface_type) {
-		case AGL_SHELL_TYPE_BACKGROUND:
-			LOG_DEBUG("Setting surface %p to background\n", surface_);
-			m_appWindow->SetAglBackground();
-		break;
-		case AGL_SHELL_TYPE_PANEL:
-			LOG_DEBUG("Setting surface %p to panel\n", surface_);
-			m_appWindow->SetAglPanel(surface_->panel.edge);
-		break;
-		default:
-			assert(!"Invalid type!\n");
-	    }
-    }
 
     // set compositor window type
     setWindowProperty("_WEBOS_WINDOW_TYPE", m_windowType);
