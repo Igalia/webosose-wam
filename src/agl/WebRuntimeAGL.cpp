@@ -193,6 +193,16 @@ SharedBrowserProcessWebAppLauncher::send_ready(void)
 	ndata.push_back(ready_timer_id_.c_str());
 
 	LOG_DEBUG("SharedBrowserProcessWebAppLauncher::send_ready() before doing sendEvent with verb %s", kSendAglReady);
+
+	// artifically wait a bit until we send it
+	struct timespec ts;
+	ts.tv_sec = 1;
+	ts.tv_nsec = 0;
+	int count = 3;
+	while (count-- > 0) {
+		LOG_DEBUG("SharedBrowserProcessWebAppLauncher::send_ready() waiting %d seconds\n", count);
+		nanosleep(&ts, NULL);
+	}
 	WebAppManagerServiceAGL::instance()->sendEvent(ndata.size(), ndata.data());
 }
 

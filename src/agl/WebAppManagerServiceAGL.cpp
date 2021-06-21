@@ -21,6 +21,7 @@
 
 #include "WebAppManager.h"
 #include "WebAppBase.h"
+#include "WebPageBase.h"
 
 #include "agl-shell.pb.h"
 
@@ -516,7 +517,7 @@ WebAppManagerServiceAGL::triggetEventForApp(const std::string& action)
 	} else if (action == kKilledApp) {
 		event_app_timer_.start(1000, this, &WebAppManagerServiceAGL::onKillEvent);
 	} else if (action == kSendAglReady) {
-		ready_app_timer_.start(1000, this, &WebAppManagerServiceAGL::onSendAglEvent);
+		ready_app_timer_.start(3000, this, &WebAppManagerServiceAGL::onSendAglEvent);
 	}
 }
 
@@ -714,14 +715,19 @@ void WebAppManagerServiceAGL::onActivateEvent() {
 void
 WebAppManagerServiceAGL::onSendAglEvent()
 {
-	LOG_DEBUG("onSendAglEvent for app_id_event_target_ %s", app_id_event_target_.c_str());
 	if (app_id_event_target_.empty())
 		return;
 
 	WebAppBase* web_app = WebAppManager::instance()->findAppById(app_id_event_target_);
 	if (web_app) {
-		LOG_DEBUG("got webapp for app_id_event_target_ %s, sending ready", app_id_event_target_.c_str());
-		web_app->sendAglReady();
+		WebPageBase *page = web_app->page();
+		LOG_DEBUG("onSendAglEvent for app_id_event_target_ %s", app_id_event_target_.c_str());
+		/* FIXME: there's no assurance that by this point the webapp
+		 * has been up-and-running.  Waiting here would effectively
+		 * block WAM so we need another way of being notified when the
+		 * webapps has been fully loaded */
+		if (page)
+			web_app->sendAglReady();
 	}
 
 	app_id_event_target_.clear();
