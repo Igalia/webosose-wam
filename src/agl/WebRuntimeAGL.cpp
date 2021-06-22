@@ -1,5 +1,3 @@
-#include "WebRuntimeAGL.h"
-
 #include <cassert>
 #include <regex>
 #include <unistd.h>
@@ -11,6 +9,7 @@
 
 #include <webos/app/webos_main.h>
 
+#include "WebRuntimeAGL.h"
 #include "LogManager.h"
 #include "PlatformModuleFactoryImpl.h"
 #include "StringUtils.h"
@@ -71,30 +70,26 @@ is_activate_app(const std::vector<std::string>& args)
 	return std::string();
 }
 
-static enum agl_shell_surface_type
-get_surface_type(const char* surface_type)
+void
+agl_shell_panel::to_edge(const char *_edge)
 {
-  if (!strcmp(surface_type, "background"))
-    return AGL_SHELL_TYPE_BACKGROUND;
-  if (!strcmp(surface_type, "panel"))
-    return AGL_SHELL_TYPE_PANEL;
-
-  return AGL_SHELL_TYPE_NONE;
+	if (!strcmp(_edge, "top"))
+		edge = AGL_SHELL_PANEL_TOP;
+	else if (!strcmp(_edge, "bottom"))
+		edge = AGL_SHELL_PANEL_BOTTOM;
+	else if (!strcmp(_edge, "left"))
+		edge = AGL_SHELL_PANEL_LEFT;
+	else if (!strcmp(_edge, "right"))
+		edge = AGL_SHELL_PANEL_RIGHT;
+	else
+		assert(!"Invalid edge detected");
 }
 
-static enum agl_shell_panel_type
-get_surface_panel_type(const char* panel_type)
+void
+agl_shell_panel::init(const char *_edge, const char *_width)
 {
-  if (!strcmp(panel_type, "top"))
-    return AGL_SHELL_PANEL_TOP;
-  if (!strcmp(panel_type, "bottom"))
-    return AGL_SHELL_PANEL_BOTTOM;
-  if (!strcmp(panel_type, "left"))
-    return AGL_SHELL_PANEL_LEFT;
-  if (!strcmp(panel_type, "right"))
-    return AGL_SHELL_PANEL_RIGHT;
-
-  return AGL_SHELL_PANEL_NOT_FOUND;
+	to_edge(_edge);
+	width = strtoul(_width, NULL, 10);
 }
 
 static bool isSharedBrowserProcess(const std::vector<std::string>& args) {
@@ -164,14 +159,14 @@ pid_t Launcher::find_surfpid_by_rid(pid_t app_pid)
 int
 SingleBrowserProcessWebAppLauncher::launch(const std::string& id,
 					   const std::string& uri,
-					   const std::string& surface_role,
-					   const std::string& panel_type,
+					   std::list<struct agl_shell_surface> surfaces,
 					   const std::string& width,
 					   const std::string& height)
 {
 	m_rid = (int) getpid();
 
-	WebAppManagerServiceAGL::instance()->setStartupApplication(id, uri, m_rid, AGL_SHELL_TYPE_NONE, AGL_SHELL_PANEL_NOT_FOUND, 0, 0);
+	LOG_DEBUG("SingleBrowserProcessWebAppLauncher::launch with id %s, uri %s\n", id.c_str(), uri.c_str());
+	WebAppManagerServiceAGL::instance()->setStartupApplication(id, uri, m_rid, 0, 0, surfaces);
 	return m_rid;
 }
 
@@ -181,11 +176,40 @@ int SingleBrowserProcessWebAppLauncher::loop(int argc, const char** argv, volati
   return webOSMain.Run(argc, argv);
 }
 
+
+void
+SharedBrowserProcessWebAppLauncher::send_ready(void)
+{
+	LOG_DEBUG("In SharedBrowserProcessWebAppLauncher::send_ready()");
+
+	if (ready_timer_id_.empty()) {
+		LOG_DEBUG("Set the ready_timer_id_!");
+		return;
+	}
+
+	std::vector<const char*> ndata;
+
+	ndata.push_back(kSendAglReady);
+	ndata.push_back(ready_timer_id_.c_str());
+
+	LOG_DEBUG("SharedBrowserProcessWebAppLauncher::send_ready() before doing sendEvent with verb %s", kSendAglReady);
+
+	// artifically wait a bit until we send it
+	struct timespec ts;
+	ts.tv_sec = 1;
+	ts.tv_nsec = 0;
+	int count = 3;
+	while (count-- > 0) {
+		LOG_DEBUG("SharedBrowserProcessWebAppLauncher::send_ready() waiting %d seconds\n", count);
+		nanosleep(&ts, NULL);
+	}
+	WebAppManagerServiceAGL::instance()->sendEvent(ndata.size(), ndata.data());
+}
+
 int
 SharedBrowserProcessWebAppLauncher::launch(const std::string& id,
 					   const std::string& uri,
-					   const std::string& surface_role,
-					   const std::string& panel_type,
+					   std::list<struct agl_shell_surface> surfaces,
 					   const std::string& width,
 					   const std::string& height)
 {
@@ -198,17 +222,22 @@ SharedBrowserProcessWebAppLauncher::launch(const std::string& id,
 	std::string m_rid_s = std::to_string(m_rid);
 
 	std::vector<const char*> data;
+
 	data.push_back(kStartApp);
 	data.push_back(id.c_str());
 	data.push_back(uri.c_str());
 	data.push_back(m_rid_s.c_str());
-	data.push_back(surface_role.c_str());
-	data.push_back(panel_type.c_str());
-
 	data.push_back(width.c_str());
 	data.push_back(height.c_str());
 
-	WebAppManagerServiceAGL::instance()->launchOnHost(data.size(), data.data());
+	LOG_DEBUG("SharedBrowserProcessWebAppLauncher::launch() before doing launchOnHost");
+	WebAppManagerServiceAGL::instance()->launchOnHost(data.size(), data.data(), surfaces);
+
+	if (!surfaces.empty()) {
+		ready_timer_id_ = id;
+		send_ready();
+	}
+
 	return m_rid;
 }
 
@@ -274,18 +303,14 @@ int WebAppLauncherRuntime::run(int argc, const char** argv) {
 
   m_id = getAppId(args);
   m_url = getAppUrl(args);
-  m_role = "WebApp";
 
   setup_signals();
 
   if (!init())
     return -1;
 
-  std::string surface_role_str = std::to_string(m_surface_type);
-  std::string panel_type_str = std::to_string(m_panel_type);
-
   /* Launch WAM application */
-  m_launcher->m_rid = m_launcher->launch(m_id, m_url, surface_role_str, panel_type_str, m_width, m_height);
+  m_launcher->m_rid = m_launcher->launch(m_id, m_url, surfaces, m_width, m_height);
 
   if (m_launcher->m_rid < 0) {
     LOG_DEBUG("cannot launch WAM app (%s)", m_id.c_str());
@@ -306,91 +331,92 @@ void WebAppLauncherRuntime::setup_signals() {
   signal(SIGTERM, sig_term_handler);
 }
 
-bool WebAppLauncherRuntime::init() {
-  // based on https://tools.ietf.org/html/rfc3986#page-50
-  std::regex url_regex (
-    R"(^(([^:\/?#]+):)?(//([^\/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?)",
-    std::regex::extended
-  );
+bool 
+WebAppLauncherRuntime::init() {
+	// based on https://tools.ietf.org/html/rfc3986#page-50
+	std::regex url_regex (
+			R"(^(([^:\/?#]+):)?(//([^\/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?)",
+			std::regex::extended
+			);
 
-  std::smatch url_match_result;
-  if (std::regex_match(m_url, url_match_result, url_regex)) {
-    unsigned counter = 0;
-    for (const auto& res : url_match_result) {
-      LOG_DEBUG("    %d: %s", counter++, res.str().c_str());
-    }
+	std::smatch url_match_result;
 
-    if (url_match_result[4].length()) {
-      std::string authority = url_match_result[4].str();
-      std::size_t n = authority.find(':');
-      if (n != std::string::npos) {
-        std::string sport = authority.substr(n+1);
-        m_host = authority.substr(0, n);
-        m_role.push_back('-');
-        m_role.append(m_host);
-        m_role.push_back('-');
-        m_role.append(sport);
-        m_port = stringTo<int>(sport);
-      } else {
-        m_host = authority;
-        m_role.push_back('-');
-        m_role.append(m_host);
-      }
-    }
+	if (std::regex_match(m_url, url_match_result, url_regex)) {
+		unsigned counter = 0;
+		for (const auto& res : url_match_result) {
+			LOG_DEBUG("    %d: %s", counter++, res.str().c_str());
+		}
 
-    bool url_misses_token = true;
-    if (url_match_result[7].length()) {
-      std::string query = url_match_result[7].str();
-      std::size_t n = query.find('=');
-      if (n != std::string::npos) {
-        m_token = query.substr(n+1);
-        url_misses_token = false;
-      }
-    }
-    if (url_misses_token) {
-      char *tokenv = getenv("CYNAGOAUTH_TOKEN");
-      if (tokenv) {
-        m_token = tokenv;
-        m_url.push_back(url_match_result[7].length() ? '&' : '?');
-        m_url.append("token=");
-        m_url.append(m_token);
-      }
-    }
+		if (url_match_result[4].length()) {
+			std::string authority = url_match_result[4].str();
+			std::size_t n = authority.find(':');
+			if (n != std::string::npos) {
+				std::string sport = authority.substr(n+1);
+				m_host = authority.substr(0, n);
+				m_port = stringTo<int>(sport);
+			} else {
+				m_host = authority;
+			}
+		}
 
-    std::string path = std::string(getenv("AFM_APP_INSTALL_DIR"));
-    if (path.empty()) {
-	    LOG_DEBUG("Please set AFM_APP_INSTALL_DIR");
-	    return false;
-    }
-    path = path + "/" + WEBAPP_CONFIG;
+		bool url_misses_token = true;
+		if (url_match_result[7].length()) {
+			std::string query = url_match_result[7].str();
+			std::size_t n = query.find('=');
+			if (n != std::string::npos) {
+				m_token = query.substr(n+1);
+				url_misses_token = false;
+			}
+		}
 
-    // Parse config file of runxdg
-    if (parse_config(path.c_str())) {
-      LOG_DEBUG("Error in config");
-      return false;
-    }
+		if (url_misses_token) {
+			char *tokenv = getenv("CYNAGOAUTH_TOKEN");
+			if (tokenv) {
+				m_token = tokenv;
+				m_url.push_back(url_match_result[7].length() ? '&' : '?');
+				m_url.append("token=");
+				m_url.append(m_token);
+			}
+		}
 
-    // Special cases for windowmanager roles
-    if (m_id.rfind("webapps-html5-homescreen", 0) == 0)
-      m_role = "homescreen";
-    else if (m_id.rfind("webapps-homescreen", 0) == 0)
-      m_role = "homescreen";
+		std::string path = std::string(getenv("AFM_APP_INSTALL_DIR"));
+		if (path.empty()) {
+			LOG_DEBUG("Please set AFM_APP_INSTALL_DIR");
+			return false;
+		}
+		path = path + "/" + WEBAPP_CONFIG;
 
-    LOG_DEBUG("id=[%s], name=[%s], role=[%s], url=[%s], host=[%s], port=%d, token=[%s], width=[%s], height[%s], surface_type[%d], panel_type[%d]",
-            m_id.c_str(), m_name.c_str(), m_role.c_str(), m_url.c_str(),
-            m_host.c_str(), m_port, m_token.c_str(), m_width.c_str(), m_height.c_str(), m_surface_type, m_panel_type);
+		// Parse config file of runxdg
+		if (parse_config(path.c_str())) {
+			LOG_DEBUG("Error in config");
+			return false;
+		}
 
-    // Setup HomeScreen API
-    if (!init_hs()) {
-      LOG_DEBUG("cannot setup hs API");
-      return false;
-    }
+		// Special cases for windowmanager roles
+		if (m_id.rfind("webapps-html5-homescreen", 0) == 0)
+			m_role = "homescreen";
+		else if (m_id.rfind("webapps-homescreen", 0) == 0)
+			m_role = "homescreen";
+		else {
+			m_role = m_id.substr(0,12);
+		}
 
-    return true;
-  } else {
-    LOG_DEBUG("Malformed url.");
-    return false;
-  }
+		LOG_DEBUG("id=[%s], name=[%s], role=[%s], url=[%s], host=[%s], port=%d, token=[%s], width=[%s], height[%s]",
+				m_id.c_str(), m_name.c_str(), m_role.c_str(), m_url.c_str(),
+				m_host.c_str(), m_port, m_token.c_str(), m_width.c_str(),
+				m_height.c_str());
+
+		// Setup HomeScreen API
+		if (!init_hs()) {
+			LOG_DEBUG("cannot setup hs API");
+			return false;
+		}
+
+		return true;
+	} else {
+		LOG_DEBUG("Malformed url.");
+		return false;
+	}
 }
 
 bool WebAppLauncherRuntime::init_hs() {
@@ -409,6 +435,99 @@ bool WebAppLauncherRuntime::init_hs() {
   return true;
 }
 
+static std::string
+surface_compose_entry_point(std::string src, std::string host, int port, std::string token)
+{
+	std::string entryPoint = std::string("http://");
+
+	entryPoint.append(host);
+	entryPoint.append(":");
+	entryPoint.append(std::to_string(port));
+
+	auto found = src.find("/");
+
+	if (found == std::string::npos) {
+		entryPoint.append("/");
+		entryPoint.append(src);
+		entryPoint.append("/");
+	} else {
+		if (found > 0) {
+			entryPoint.append("/");
+			entryPoint.append(src);
+		} else {
+			entryPoint.append("/");
+		}
+	}
+
+
+	entryPoint.append("index.html");
+	entryPoint.append("?token=");
+	entryPoint.append(token);
+
+	return entryPoint;
+}
+
+void
+WebAppLauncherRuntime::parse_config_client_shell(xmlNode *root_node)
+{
+        bool bg_found = false;
+
+        for (xmlNode *node = root_node->children; node; node = node->next) {
+                if (!xmlStrcmp(node->name, (const xmlChar *) "surface")) {
+                        const char *c_surface_type =
+                                (const char *) xmlGetProp(node, (const xmlChar *) "role");
+
+                        if (!strcmp(c_surface_type, "panel")) {
+                                struct agl_shell_surface surface;
+
+                                xmlChar *width =
+                                        xmlGetProp(node,  (const xmlChar *) "width");
+                                xmlChar *source =
+                                        xmlGetProp(node, (const xmlChar *) "src");
+                                xmlChar *edge =
+                                        xmlGetProp(node, (const xmlChar *) "edge");
+
+                                assert(source);
+                                assert(width);
+                                assert(edge);
+
+                                struct agl_shell_panel panel;
+
+                                panel.init((const char *) edge,
+                                           (const char *) width);
+
+                                surface.panel = panel;
+                                surface.src = std::string((char *) source);
+
+				surface.entryPoint =
+					surface_compose_entry_point(surface.src, m_host, m_port, m_token);
+
+                                surface.surface_type = AGL_SHELL_TYPE_PANEL;
+                                surfaces.push_back(surface);
+
+                        } else if (!strcmp(c_surface_type, "background")) {
+                                struct agl_shell_surface surface;
+
+                                assert(!bg_found);
+
+                                xmlChar *source =
+                                        xmlGetProp(node, (const xmlChar *) "src");
+
+                                assert(source);
+                                surface.surface_type = AGL_SHELL_TYPE_BACKGROUND;
+                                surface.src = std::string((char *) source);
+				surface.entryPoint =
+					surface_compose_entry_point(surface.src, m_host, m_port, m_token);
+                                surfaces.push_back(surface);
+                                bg_found = true;
+                        }
+                }
+        }
+
+        /* need at least a background */
+        assert(bg_found);
+}
+
 
 int WebAppLauncherRuntime::parse_config (const char *path_to_config)
 {
@@ -425,9 +544,6 @@ int WebAppLauncherRuntime::parse_config (const char *path_to_config)
 
   xmlChar *width = nullptr;
   xmlChar *height = nullptr;
-
-  xmlChar *surface_type = nullptr;
-  xmlChar *panel_type = nullptr;
 
   id = xmlGetProp(root, (const xmlChar*)"id");
   version = xmlGetProp(root, (const xmlChar*)"version");
@@ -448,13 +564,13 @@ int WebAppLauncherRuntime::parse_config (const char *path_to_config)
       height = xmlGetProp(node, (const xmlChar*) "height");
     }
 
-    if (!xmlStrcmp(node->name, (const xmlChar*) "surface")) {
-      surface_type = xmlGetProp(node, (const xmlChar*) "role");
-      panel_type = xmlGetProp(node, (const xmlChar*) "panel");
+    if (!xmlStrcmp(node->name, (const xmlChar*) "client-shell")) {
+	parse_config_client_shell(node);
     }
   }
 
   fprintf(stdout, "...parse_config...\n");
+
   LOG_DEBUG("id: %s", id);
   LOG_DEBUG("version: %s", version);
   LOG_DEBUG("name: %s", name);
@@ -464,8 +580,6 @@ int WebAppLauncherRuntime::parse_config (const char *path_to_config)
   LOG_DEBUG("icon: %s", icon);
   LOG_DEBUG("width: %s", width);
   LOG_DEBUG("height %s", height);
-  LOG_DEBUG("surface_type: %s", surface_type);
-  LOG_DEBUG("panel_type %s", panel_type);
 
   m_name = std::string((const char*)name);
   if (width)
@@ -478,24 +592,6 @@ int WebAppLauncherRuntime::parse_config (const char *path_to_config)
   else
 	  m_height = std::string("0");
 
-  m_surface_type = AGL_SHELL_TYPE_NONE;
-  m_panel_type = AGL_SHELL_PANEL_NOT_FOUND;
-
-  if (surface_type)
-    m_surface_type = get_surface_type((const char *) surface_type);
-
-  if (panel_type) {
-    if (m_surface_type != AGL_SHELL_TYPE_PANEL) {
-      LOG_WARNING("Panel_type can only be set when surface_type is panel");
-      return -1;
-    }
-
-    m_panel_type = get_surface_panel_type((const char*) panel_type);
-    if (m_panel_type == AGL_SHELL_PANEL_NOT_FOUND) {
-      LOG_WARNING("Incorrect panel_type value");
-      return -1;
-    }
-  }
 
   xmlFree(id);
   xmlFree(version);
@@ -506,8 +602,6 @@ int WebAppLauncherRuntime::parse_config (const char *path_to_config)
   xmlFree(icon);
   xmlFree(width);
   xmlFree(height);
-  xmlFree(surface_type);
-  xmlFree(panel_type);
   xmlFreeDoc(doc);
 
   return 0;

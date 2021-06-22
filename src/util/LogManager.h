@@ -32,7 +32,7 @@
 #define LOG_INFO_APPID(...) \
     do {                    \
     } while (0)
-#define LOG_INFO(...) //LOG_MSG("INFO", ##__VA_ARGS__)
+#define LOG_INFO(...) //LOG_MSG("DEBUG", ##__VA_ARGS__)
 #define LOG_DEBUG(...) LOG_MSG("DEBUG", ##__VA_ARGS__)
 #define LOG_WARNING(...) //LOG_MSG("WARN", ##__VA_ARGS__)
 #define LOG_ERROR(...) //LOG_MSG("ERROR", ##__VA_ARGS__)

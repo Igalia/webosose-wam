@@ -265,61 +265,61 @@ std::list<const WebAppBase*> WebAppManager::runningApps(uint32_t pid)
     return apps;
 }
 
-WebAppBase* WebAppManager::onLaunchUrl(const std::string& url, const std::string& winType,
-                                       const std::shared_ptr<ApplicationDescription> appDesc, const std::string& instanceId,
-                                       const std::string& args, const std::string& launchingAppId,
-                                       int& errCode, std::string& errMsg)
+WebAppBase *
+WebAppManager::onLaunchUrl(const std::string& url, const std::string& winType,
+                           const std::shared_ptr<ApplicationDescription> appDesc, const std::string& instanceId,
+                           const std::string& args, const std::string& launchingAppId, struct agl_shell_surface *s,
+                           int& errCode, std::string& errMsg)
 {
-    WebAppBase* app = WebAppFactoryManager::instance()->createWebApp(winType, appDesc, appDesc->subType());
+	LOG_DEBUG(">>> surface %p\n", s);
+	WebAppBase* app = WebAppFactoryManager::instance()->createWebApp(winType, appDesc, appDesc->subType(), s);
 
-    if (!app) {
-        errCode = ERR_CODE_LAUNCHAPP_UNSUPPORTED_TYPE;
-        errMsg = err_unsupportedType;
-        return nullptr;
-    }
+	if (!app) {
+		errCode = ERR_CODE_LAUNCHAPP_UNSUPPORTED_TYPE;
+		errMsg = err_unsupportedType;
+		return nullptr;
+	}
 
-    WebPageBase* page = WebAppFactoryManager::instance()->createWebPage(winType, Url(url), appDesc, appDesc->subType(), args);
+	WebPageBase* page = WebAppFactoryManager::instance()->createWebPage(winType, Url(url), appDesc, appDesc->subType(), args, s);
 
-    //set use launching time optimization true while app loading.
-    page->setUseLaunchOptimization(true);
+	//set use launching time optimization true while app loading.
+	page->setUseLaunchOptimization(true);
 
-    if (winType == WT_FLOATING || winType == WT_CARD)
-      page->setEnableBackgroundRun(appDesc->isEnableBackgroundRun());
+	if (winType == WT_FLOATING || winType == WT_CARD)
+		page->setEnableBackgroundRun(appDesc->isEnableBackgroundRun());
 
-    app->setAppDescription(appDesc);
-    if (!app->isAglRoleType())
-	    app->setAglAppId(appDesc->id().c_str());
+	app->setAppDescription(appDesc);
+	app->setAglAppId(appDesc->id().c_str());
 
-    app->setAppProperties(args);
-    app->setInstanceId(instanceId);
-    app->setLaunchingAppId(launchingAppId);
-    if (m_webAppManagerConfig->isCheckLaunchTimeEnabled())
-      app->startLaunchTimer();
-    app->attach(page);
-    app->setPreloadState(args);
+	app->setAppProperties(args);
+	app->setInstanceId(instanceId);
+	app->setLaunchingAppId(launchingAppId);
 
-    page->load();
-    webPageAdded(page);
+	if (m_webAppManagerConfig->isCheckLaunchTimeEnabled())
+		app->startLaunchTimer();
 
-    /* if the surface role is a background send ready to display them */
-    if (appDesc->surfaceRole() == 2) // TODO(rzanoni) change to the enum value
-	    app->sendAglReady();
+	app->attach(page);
+	app->setPreloadState(args);
 
-    m_appList.push_back(app);
+	page->load();
+	webPageAdded(page);
 
-    if (m_appVersion.find(appDesc->id()) != m_appVersion.end()) {
-      if (m_appVersion[appDesc->id()] != appDesc->version()) {
-        app->setNeedReload(true);
-        m_appVersion[appDesc->id()] = appDesc->version();
-      }
-    }
-    else {
-      m_appVersion[appDesc->id()] = appDesc->version();
-    }
 
-    LOG_INFO(MSGID_START_LAUNCHURL, 3, PMLOGKS("APP_ID", app->appId().c_str()), PMLOGKS("INSTANCE_ID", app->instanceId().c_str()), PMLOGKFV("PID", "%d", app->page()->getWebProcessPID()), "");
+	m_appList.push_back(app);
 
-    return app;
+	if (m_appVersion.find(appDesc->id()) != m_appVersion.end()) {
+		if (m_appVersion[appDesc->id()] != appDesc->version()) {
+			app->setNeedReload(true);
+			m_appVersion[appDesc->id()] = appDesc->version();
+		}
+	}
+	else {
+		m_appVersion[appDesc->id()] = appDesc->version();
+	}
+
+	LOG_INFO(MSGID_START_LAUNCHURL, 3, PMLOGKS("APP_ID", app->appId().c_str()), PMLOGKS("INSTANCE_ID", app->instanceId().c_str()), PMLOGKFV("PID", "%d", app->page()->getWebProcessPID()), "");
+
+	return app;
 }
 
 void WebAppManager::forceCloseAppInternal(WebAppBase* app)
@@ -636,7 +636,7 @@ void WebAppManager::killCustomPluginProcess(const std::string& basePath)
  * slightly faster for intra-sysmgr mainloop launches
  */
 std::string WebAppManager::launch(const std::string& appDescString, const std::string& params,
-        const std::string& launchingAppId, int& errCode, std::string& errMsg)
+        const std::string& launchingAppId, std::list<struct agl_shell_surface> surfaces, int& errCode, std::string& errMsg)
 {
     LOG_DEBUG("Begin");
     std::shared_ptr<ApplicationDescription> desc(ApplicationDescription::fromJsonString(appDescString.c_str()));
@@ -645,12 +645,13 @@ std::string WebAppManager::launch(const std::string& appDescString, const std::s
     if (!desc)
         return std::string();
 
-    std::string url = desc->entryPoint();
+    //std::string url = desc->entryPoint();
     std::string winType = windowTypeFromString(desc->defaultWindowType());
     errMsg.erase();
 
     Json::Value json;
     readJsonFromString(params, json);
+
 
     // Set displayAffinity (multi display support)
     auto displayAffinity = json["displayAffinity"];
@@ -668,10 +669,29 @@ std::string WebAppManager::launch(const std::string& appDescString, const std::s
         onRelaunchApp(instanceId, desc->id().c_str(), params.c_str(), launchingAppId.c_str());
     } else {
        // Run as a normal app
-        LOG_DEBUG("normal app url=[%s] instanceId=[%s]", url.c_str(), instanceId.c_str());
-        if (!onLaunchUrl(url, winType, desc, instanceId, params, launchingAppId, errCode, errMsg)) {
-            return std::string();
-        }
+       	if (surfaces.empty()) {
+		LOG_DEBUG("Got a regular app to start. Not passing any surface");
+		if (!onLaunchUrl(std::string(desc->entryPoint()), winType,
+				 desc, instanceId, params, launchingAppId,
+				 nullptr, errCode, errMsg)) {
+			LOG_DEBUG("Failed to load webapp!");
+			return std::string();
+		}
+	} else {
+		LOG_DEBUG("Got client-shell surfaces.");
+		for (struct agl_shell_surface s: surfaces) {
+			std::string url = s.src;
+			std::string fakeUrl = s.entryPoint;
+			LOG_DEBUG("normal app url=[%s] instanceId=[%s]", url.c_str(), instanceId.c_str());
+			LOG_DEBUG("url, entryPoint() %s, type %d, surface %p", url.c_str(), s.surface_type, &s);
+			LOG_DEBUG("Real entryPoint %s", desc->entryPoint().c_str());
+			LOG_DEBUG("Fake entryPoint %s", fakeUrl.c_str());
+			if (!onLaunchUrl(fakeUrl, winType, desc, instanceId, params, launchingAppId, &s, errCode, errMsg)) {
+				LOG_DEBUG("Failed to load webapp!");
+				return std::string();
+			}
+		}
+	}
     }
 
     LOG_DEBUG("Done.");

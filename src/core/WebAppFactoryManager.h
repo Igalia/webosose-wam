@@ -22,6 +22,7 @@
 #include <string>
 
 #include "WebAppFactoryInterface.h"
+#include "AglShell.h"
 
 #define kDefaultAppType "default"
 
@@ -31,11 +32,11 @@ public:
     virtual ~WebAppFactoryManager();
 
     WebAppBase* createWebApp(const std::string& winType, std::shared_ptr<ApplicationDescription> desc = 0,
-                             const std::string& appType = "");
+                             const std::string& appType = "", struct agl_shell_surface *surface = nullptr);
     WebAppBase* createWebApp(const std::string& winType, WebPageBase* page, std::shared_ptr<ApplicationDescription> desc = 0,
-                             const std::string& appType = "");
+                             const std::string& appType = "", struct agl_shell_surface *surface = nullptr);
     WebPageBase* createWebPage(const std::string& winType, const Url& url, std::shared_ptr<ApplicationDescription> desc,
-                               const std::string& appType = "", const std::string& launchParams = "");
+                               const std::string& appType = "", const std::string& launchParams = "", struct agl_shell_surface *surface = nullptr);
     WebAppFactoryInterface* getInterfaceInstance(const std::string& appType);
 
 protected:

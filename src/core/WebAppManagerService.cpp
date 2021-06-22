@@ -27,9 +27,9 @@ WebAppManagerService::WebAppManagerService()
 }
 
 std::string WebAppManagerService::onLaunch(const std::string& appDescString, const std::string& params,
-        const std::string& launchingAppId, int& errCode, std::string& errMsg)
+        const std::string& launchingAppId, std::list<struct agl_shell_surface> surfaces, int& errCode, std::string& errMsg)
 {
-    return WebAppManager::instance()->launch(appDescString, params, launchingAppId, errCode, errMsg);
+    return WebAppManager::instance()->launch(appDescString, params, launchingAppId, surfaces, errCode, errMsg);
 }
 
 bool WebAppManagerService::onKillApp(const std::string& appId, const std::string& instanceId, bool force)

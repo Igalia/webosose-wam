@@ -3,6 +3,8 @@
 
 #include <memory>
 
+//#include "WebRuntimeAGL.h"
+#include "AglShell.h"
 #include "WebAppManagerService.h"
 #include "Timer.h"
 
@@ -10,9 +12,35 @@ constexpr char kStartApp[] = "start-app";
 constexpr char kKilledApp[] = "killed-app";
 constexpr char kActivateEvent[] = "activate-event";
 constexpr char kDeactivateEvent[] = "deactivate-event";
+constexpr char kSendAglReady[] = "ready-event";
 
 class WamSocket;
 class WamSocketLockFile;
+
+struct startup_args {
+	startup_args(std::string _app_id, std::string _app_uri,
+			int _surface_id, int _width, int _height,
+			std::list<struct agl_shell_surface> _surfaces)
+	{
+		width = _width;
+		height = _height;
+
+		surfaces = _surfaces;
+		app_id = _app_id;
+		app_uri = _app_uri;
+
+		surface_id = _surface_id;
+	}
+
+	int width;
+	int height;
+	int surface_id;
+
+	std::string app_id;
+	std::string app_uri;
+	std::list<struct agl_shell_surface> surfaces;
+};
+
 
 class WebAppManagerServiceAGL : public WebAppManagerService {
 public:
@@ -25,10 +53,10 @@ public:
 
     void setStartupApplication(const std::string& startup_app_id,
         const std::string& startup_app_uri, int startup_app_surface_id,
-	int _surface_role, int _panel_type, int _width, int _height);
+	int _width, int _height, std::list<struct agl_shell_surface> surfaces);
     void setAppIdForEventTarget(const std::string& app_id);
 
-    void launchOnHost(int argc, const char **argv);
+    void launchOnHost(int argc, const char **argv, std::list<struct agl_shell_surface> surfaces);
     void sendEvent(int argc, const char **argv);
 
     // WebAppManagerService
@@ -45,17 +73,18 @@ public:
     Json::Value clearBrowsingData(const Json::Value &request) override;
     Json::Value webProcessCreated(const Json::Value &request, bool subscribed) override;
 
-    void triggerStartupApp();
+    void triggerStartupApp(struct startup_args *sargs);
     void triggetEventForApp(const std::string& action);
 
 private:
 
     WebAppManagerServiceAGL();
 
-    void launchStartupAppFromConfig();
-    void launchStartupAppFromURL();
+    void launchStartupAppFromConfig(void *data);
+    void launchStartupAppFromURL(void *data);
 
     void onActivateEvent();
+    void onSendAglEvent();
     void onDeactivateEvent();
     void onKillEvent();
 
@@ -63,13 +92,14 @@ private:
 
     std::string startup_app_id_;
     std::string startup_app_uri_;
-    int surface_role;
-    int panel_type;
+
+    std::list<struct agl_shell_surface> surfaces_;
     int width;
     int height;
 
     int startup_app_surface_id_;
-    OneShotTimer<WebAppManagerServiceAGL> startup_app_timer_;
+    OneShotTimer<WebAppManagerServiceAGL> event_app_timer_;
+    OneShotTimer<WebAppManagerServiceAGL> ready_app_timer_;
 
     std::unique_ptr<WamSocket> socket_;
     std::unique_ptr<WamSocketLockFile> lock_file_;
